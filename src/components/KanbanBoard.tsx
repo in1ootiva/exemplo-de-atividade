@@ -16,16 +16,16 @@ import { DealCard } from './DealCard';
 import { DealDialog } from './DealDialog';
 import { ColumnHeader } from './ColumnHeader';
 import { DroppableColumn } from './DroppableColumn';
-import { DealCard as DealCardType, Column } from '@/types';
+import { DealCard as DealCardType } from '@/types';
 import { Plus, Loader2 } from 'lucide-react';
 import { useColumns } from '@/hooks/useColumns';
 import { useDeals } from '@/hooks/useDeals';
 import { useAuth } from '@/hooks/useAuth';
 
 export function KanbanBoard() {
-  const { user } = useAuth();
+  useAuth();
   const { columns, loading: columnsLoading, addColumn, updateColumn, deleteColumn } = useColumns();
-  const { deals, loading: dealsLoading, addDeal, updateDeal, updateMultipleDeals, deleteDeal } = useDeals();
+  const { deals, loading: dealsLoading, addDeal, updateDeal, updateMultipleDeals } = useDeals();
   const [activeCard, setActiveCard] = useState<DealCardType | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedColumnId, setSelectedColumnId] = useState<string>('');
