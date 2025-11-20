@@ -20,8 +20,8 @@ import { useAuth } from './hooks/useAuth';
 import { useProfile } from './hooks/useProfile';
 import { useAlunoCards } from './hooks/useAlunoCards';
 import { useState } from 'react';
-import './services/reportService';
-import './services/emailService';
+import { enviarRelatorioConsolidado } from './services/reportService';
+import { enviarEmailComQuota } from './services/emailService';
 
 function AppContent() {
   const { signOut, user } = useAuth();
