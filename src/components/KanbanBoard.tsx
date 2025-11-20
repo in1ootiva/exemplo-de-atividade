@@ -2,7 +2,6 @@ import { useState } from 'react';
 import {
   DndContext,
   DragEndEvent,
-  DragOverEvent,
   DragOverlay,
   DragStartEvent,
   PointerSensor,
@@ -10,26 +9,25 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { Button } from '@/components/ui/button';
-import { DealCard } from './DealCard';
-import { DealDialog } from './DealDialog';
-import { ColumnHeader } from './ColumnHeader';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { StudentCard } from './StudentCard';
+import { ObservacaoModal } from './ObservacaoModal';
 import { DroppableColumn } from './DroppableColumn';
-import { DealCard as DealCardType } from '@/types';
-import { Plus, Loader2 } from 'lucide-react';
-import { useColumns } from '@/hooks/useColumns';
-import { useDeals } from '@/hooks/useDeals';
+import { AlunoCardWithDetails, ColumnId, ACADEMIC_COLUMNS } from '@/types';
+import { Loader2 } from 'lucide-react';
+import { useAlunoCards } from '@/hooks/useAlunoCards';
 import { useAuth } from '@/hooks/useAuth';
 
 export function KanbanBoard() {
   useAuth();
-  const { columns, loading: columnsLoading, addColumn, updateColumn, deleteColumn } = useColumns();
-  const { deals, loading: dealsLoading, addDeal, updateDeal, updateMultipleDeals } = useDeals();
-  const [activeCard, setActiveCard] = useState<DealCardType | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedColumnId, setSelectedColumnId] = useState<string>('');
-  const [editingCard, setEditingCard] = useState<DealCardType | undefined>(undefined);
+  const { cards, loading, moverCard } = useAlunoCards();
+  const [activeCard, setActiveCard] = useState<AlunoCardWithDetails | null>(null);
+  const [observacaoModalOpen, setObservacaoModalOpen] = useState(false);
+  const [cardToMove, setCardToMove] = useState<{
+    cardId: string;
+    novaColuna: ColumnId;
+    alunoNome: string;
+  } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -39,44 +37,11 @@ export function KanbanBoard() {
     })
   );
 
-  const loading = columnsLoading || dealsLoading;
-
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
-    const card = deals.find((c) => c.id === active.id);
+    const card = cards.find((c) => c.id === active.id);
     if (card) {
       setActiveCard(card);
-    }
-  };
-
-  const handleDragOver = (event: DragOverEvent) => {
-    const { active, over } = event;
-    if (!over) return;
-
-    const activeId = active.id;
-    const overId = over.id;
-
-    if (activeId === overId) return;
-
-    const activeCard = deals.find((c) => c.id === activeId);
-    const overCard = deals.find((c) => c.id === overId);
-
-    if (!activeCard) return;
-
-    // Se estamos sobre outra card
-    if (overCard) {
-      const activeColumnId = activeCard.column_id;
-      const overColumnId = overCard.column_id;
-
-      if (activeColumnId !== overColumnId) {
-        updateDeal(activeCard.id, { column_id: overColumnId });
-      }
-    } else {
-      // Se estamos sobre uma coluna
-      const overColumn = columns.find((col) => col.id === overId);
-      if (overColumn && activeCard.column_id !== overColumn.id) {
-        updateDeal(activeCard.id, { column_id: overColumn.id });
-      }
     }
   };
 
@@ -86,97 +51,57 @@ export function KanbanBoard() {
 
     if (!over) return;
 
-    const activeId = active.id;
-    const overId = over.id;
+    const activeId = active.id as string;
+    const overId = over.id as string;
 
     if (activeId === overId) return;
 
-    const activeCard = deals.find((c) => c.id === activeId);
-    const overCard = deals.find((c) => c.id === overId);
-
+    const activeCard = cards.find((c) => c.id === activeId);
     if (!activeCard) return;
 
-    if (overCard && activeCard.column_id === overCard.column_id) {
-      const columnCards = deals.filter((c) => c.column_id === activeCard.column_id);
-      const oldIndex = columnCards.findIndex((c) => c.id === activeId);
-      const newIndex = columnCards.findIndex((c) => c.id === overId);
+    // Verificar se o overId é uma coluna
+    const overColumn = ACADEMIC_COLUMNS.find((col) => col.id === overId);
+    if (!overColumn) return;
 
-      const reorderedColumnCards = arrayMove(columnCards, oldIndex, newIndex);
+    const novaColuna = overColumn.id;
 
-      // Atualizar ordem de múltiplos cards
-      const updates = reorderedColumnCards.map((card, index) => ({
-        id: card.id,
-        data: { order: index },
-      }));
-
+    // Se for mover para "Contato Realizado", abrir modal
+    if (novaColuna === 'contato_realizado') {
+      setCardToMove({
+        cardId: activeCard.id,
+        novaColuna,
+        alunoNome: activeCard.aluno_nome,
+      });
+      setObservacaoModalOpen(true);
+    } else {
+      // Mover direto para outras colunas
       try {
-        await updateMultipleDeals(updates);
+        await moverCard(activeCard.id, novaColuna);
       } catch (error) {
-        console.error('Error reordering cards:', error);
+        console.error('Erro ao mover card:', error);
       }
     }
   };
 
-  const handleAddCard = (columnId: string) => {
-    setSelectedColumnId(columnId);
-    setEditingCard(undefined);
-    setDialogOpen(true);
-  };
+  const handleSaveObservacao = async (observacao: string) => {
+    if (!cardToMove) return;
 
-  const handleEditCard = (card: DealCardType) => {
-    setEditingCard(card);
-    setDialogOpen(true);
-  };
-
-  const handleSaveCard = async (dealData: Omit<DealCardType, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
     try {
-      if (editingCard) {
-        // Editar card existente
-        await updateDeal(editingCard.id, dealData);
-      } else {
-        // Criar novo card
-        const columnDeals = deals.filter((c) => c.column_id === dealData.column_id);
-        await addDeal({
-          ...dealData,
-          order: columnDeals.length,
-        });
-      }
+      await moverCard(cardToMove.cardId, cardToMove.novaColuna, observacao);
+      setCardToMove(null);
     } catch (error) {
-      console.error('Error saving card:', error);
+      console.error('Erro ao mover card com observação:', error);
+      throw error;
     }
   };
 
-  const handleRenameColumn = async (columnId: string, newTitle: string) => {
-    try {
-      await updateColumn(columnId, { title: newTitle });
-    } catch (error) {
-      console.error('Error renaming column:', error);
-    }
+  const handleCardClick = (card: AlunoCardWithDetails) => {
+    // Mostrar detalhes do card em um modal (futuro)
+    console.log('Card clicado:', card);
   };
 
-  const handleDeleteColumn = async (columnId: string) => {
-    try {
-      await deleteColumn(columnId);
-    } catch (error) {
-      console.error('Error deleting column:', error);
-    }
-  };
-
-  const handleAddColumn = async () => {
-    const newColumnTitle = window.prompt('Digite o nome da nova coluna:');
-    if (!newColumnTitle || !newColumnTitle.trim()) return;
-
-    try {
-      await addColumn(newColumnTitle.trim(), '#6366f1');
-    } catch (error) {
-      console.error('Error adding column:', error);
-    }
-  };
-
-  const getColumnCards = (columnId: string) => {
-    return deals
-      .filter((card) => card.column_id === columnId)
-      .sort((a, b) => a.order - b.order);
+  const getColumnCards = (columnId: ColumnId): AlunoCardWithDetails[] => {
+    return cards.filter((card) => card.column_id === columnId);
   };
 
   if (loading) {
@@ -184,7 +109,7 @@ export function KanbanBoard() {
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">Carregando seu CRM...</p>
+          <p className="text-muted-foreground">Carregando quadro de acompanhamento...</p>
         </div>
       </div>
     );
@@ -196,79 +121,71 @@ export function KanbanBoard() {
         sensors={sensors}
         collisionDetection={closestCorners}
         onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex gap-4 overflow-x-auto pb-4 h-full">
-          {columns.map((column) => {
+        <div className="flex gap-3 overflow-x-auto pb-4 h-full scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+          {ACADEMIC_COLUMNS.map((column) => {
             const columnCards = getColumnCards(column.id);
             return (
               <div
                 key={column.id}
-                className="flex-shrink-0 w-80 bg-muted/30 rounded-lg p-4"
+                className="flex-shrink-0 w-72 bg-muted/30 rounded-lg p-3"
               >
-                <ColumnHeader
-                  column={column}
-                  cardCount={columnCards.length}
-                  onRename={handleRenameColumn}
-                  onDelete={handleDeleteColumn}
-                />
+                {/* Cabeçalho da Coluna */}
+                <div className="mb-4">
+                  <div
+                    className="h-2 rounded-t-lg mb-2"
+                    style={{ backgroundColor: column.color }}
+                  />
+                  <h3 className="font-bold text-sm mb-1">{column.title}</h3>
+                  <p className="text-xs text-gray-600 mb-2">{column.description}</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium px-2 py-1 bg-gray-200 rounded-full">
+                      {columnCards.length} aluno(s)
+                    </span>
+                  </div>
+                </div>
 
+                {/* Cards da Coluna */}
                 <SortableContext
                   items={columnCards.map((c) => c.id)}
                   strategy={verticalListSortingStrategy}
                 >
                   <DroppableColumn id={column.id}>
                     {columnCards.map((card) => (
-                      <DealCard
+                      <StudentCard
                         key={card.id}
-                        deal={card}
-                        onClick={() => handleEditCard(card)}
+                        card={card}
+                        onClick={() => handleCardClick(card)}
                       />
                     ))}
+                    {columnCards.length === 0 && (
+                      <div className="text-center py-8 text-gray-400 text-sm">
+                        Nenhum aluno nesta categoria
+                      </div>
+                    )}
                   </DroppableColumn>
                 </SortableContext>
-
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => handleAddCard(column.id)}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adicionar Negociação
-                </Button>
               </div>
             );
           })}
-
-          {/* Botão para adicionar nova coluna */}
-          <div className="flex-shrink-0 w-80">
-            <Button
-              variant="outline"
-              className="w-full h-full min-h-[100px] border-dashed"
-              onClick={handleAddColumn}
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              Adicionar Coluna
-            </Button>
-          </div>
         </div>
 
         <DragOverlay>
           {activeCard ? (
             <div className="rotate-3 opacity-80">
-              <DealCard deal={activeCard} onClick={() => {}} />
+              <StudentCard card={activeCard} onClick={() => {}} />
             </div>
           ) : null}
         </DragOverlay>
       </DndContext>
 
-      <DealDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onSave={handleSaveCard}
-        columnId={selectedColumnId}
-        existingDeal={editingCard}
+      {/* Modal de Observação */}
+      <ObservacaoModal
+        open={observacaoModalOpen}
+        onOpenChange={setObservacaoModalOpen}
+        alunoNome={cardToMove?.alunoNome || ''}
+        onSave={handleSaveObservacao}
       />
     </>
   );
