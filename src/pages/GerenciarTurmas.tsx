@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
 import { useTurmas } from '@/hooks/useTurmas';
 import { useProfile } from '@/hooks/useProfile';
 import { useImportGoDevs } from '@/hooks/useImportGoDevs';

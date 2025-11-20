@@ -26,7 +26,7 @@ export function RelatorioModal({
   open,
   onOpenChange,
   tipo,
-  turmaId,
+  turmaId: _turmaId,
   turmaNome,
   onEnviar,
 }: RelatorioModalProps) {

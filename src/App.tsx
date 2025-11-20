@@ -20,13 +20,13 @@ import { useAuth } from './hooks/useAuth';
 import { useProfile } from './hooks/useProfile';
 import { useAlunoCards } from './hooks/useAlunoCards';
 import { useState } from 'react';
-import { enviarRelatorioTurma, enviarRelatorioConsolidado } from './services/reportService';
-import { enviarEmailComQuota } from './services/emailService';
+import './services/reportService';
+import './services/emailService';
 
 function AppContent() {
   const { signOut, user } = useAuth();
   const { profile, isCoordenador } = useProfile();
-  const { cards, getEstatisticas } = useAlunoCards();
+  const { getEstatisticas } = useAlunoCards();
   const location = useLocation();
   const [emailConfigOpen, setEmailConfigOpen] = useState(false);
   const [relatorioModalOpen, setRelatorioModalOpen] = useState(false);

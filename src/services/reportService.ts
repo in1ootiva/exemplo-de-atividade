@@ -65,7 +65,7 @@ export async function gerarRelatorioTurma(turmaId: string): Promise<RelatorioTur
     return {
       turma_id: turma.id,
       turma_nome: turma.nome,
-      professor_nome: turma.professor?.raw_user_meta_data?.name || 'Não atribuído',
+      professor_nome: (turma as any).professor_nome || 'Não atribuído',
       data_ultima_chamada: ultimaChamada?.data,
       total_alunos: alunos?.length || 0,
       alertas,
@@ -586,7 +586,7 @@ Relatório gerado em: ${new Date(relatorio.data_geracao).toLocaleString('pt-BR')
 export async function enviarRelatorioTurma(
   turmaId: string,
   destinatarios: string[],
-  userId: string,
+  _userId: string,
   from: string
 ) {
   const relatorio = await gerarRelatorioTurma(turmaId);
@@ -612,7 +612,7 @@ export async function enviarRelatorioTurma(
  */
 export async function enviarRelatorioConsolidado(
   destinatarios: string[],
-  userId: string,
+  _userId: string,
   from: string
 ) {
   const relatorio = await gerarRelatorioConsolidado();

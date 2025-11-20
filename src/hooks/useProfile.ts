@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Profile, UserRole } from '@/types';
+import { Profile } from '@/types';
 import { useAuth } from './useAuth';
 
 export function useProfile() {

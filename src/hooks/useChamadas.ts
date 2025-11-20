@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Chamada, ChamadaCompleta, ChamadaAluno, ChamadaListItem } from '@/types';
+import { ChamadaCompleta, ChamadaListItem } from '@/types';
 import { useAuth } from './useAuth';
 
 export function useChamadas(turmaId?: string) {

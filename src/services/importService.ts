@@ -41,7 +41,7 @@ export async function buscarTurmasGoDevs(): Promise<GoDevsTurma[]> {
     return data.map((classe: any) => ({
       id: classe.id,
       nome: classe.name,
-      descricao: null,
+      descricao: undefined,
       created_at: classe.created_at,
     }));
   } catch (err: any) {
@@ -122,7 +122,7 @@ export async function buscarAlunosGoDevs(turmaId: string): Promise<GoDevsAluno[]
             nome_completo: profile.full_name || profile.nickname || 'Aluno sem nome',
             nome: profile.full_name || profile.nickname || 'Aluno sem nome',
             email: email,
-            telefone: null,
+            telefone: undefined,
             cpf: profile.cpf,
             github_url: profile.github_url,
             linkedin_url: profile.linkedin_url,
@@ -146,7 +146,7 @@ export async function buscarAlunosGoDevs(turmaId: string): Promise<GoDevsAluno[]
       nome_completo: profile.full_name || profile.nickname || 'Aluno sem nome',
       nome: profile.full_name || profile.nickname || 'Aluno sem nome',
       email: profile.email || `${profile.full_name?.toLowerCase().replace(/\s+/g, '.')}@aluno.temp`,
-      telefone: null,
+      telefone: undefined,
       cpf: profile.cpf,
       github_url: profile.github_url,
       linkedin_url: profile.linkedin_url,
