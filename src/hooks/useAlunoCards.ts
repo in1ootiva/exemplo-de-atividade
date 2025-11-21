@@ -230,6 +230,7 @@ export function useAlunoCards(turmaId?: string) {
 
       if (!todosCards || todosCards.length === 0) {
         console.log('✅ Nenhum card encontrado');
+        await fetchCards(); // Buscar cards normalmente
         return { removidos: 0 };
       }
 
@@ -248,6 +249,8 @@ export function useAlunoCards(turmaId?: string) {
 
       if (cardsOrfaos.length === 0) {
         console.log('✅ Nenhum card órfão encontrado');
+        // Buscar cards normalmente se não há órfãos
+        await fetchCards();
         return { removidos: 0 };
       }
 
@@ -268,13 +271,18 @@ export function useAlunoCards(turmaId?: string) {
       return { removidos: cardsOrfaos.length };
     } catch (err: any) {
       console.error('❌ Erro ao limpar cards órfãos:', err);
+      await fetchCards(); // Buscar cards mesmo com erro
       return { removidos: 0 };
     }
   };
 
   useEffect(() => {
-    if (profile) {
-      fetchCards();
+    if (profile && user) {
+      // Primeiro limpar cards órfãos, depois buscar cards
+      const inicializar = async () => {
+        await limparCardsOrfaos();
+      };
+      inicializar();
     }
   }, [user, profile, turmaId]);
 
