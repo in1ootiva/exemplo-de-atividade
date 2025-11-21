@@ -67,24 +67,39 @@ export async function enviarEmail(
       'pendente'
     );
 
-    // IMPORTANTE: Aqui você deve usar o MCP do Resend
-    // Exemplo de chamada que seria feita:
-    /*
-    const result = await mcp_resend_send_email({
-      to: emailData.to,
-      from: emailData.from,
-      subject: emailData.subject,
-      html: emailData.html,
-      text: emailData.text,
+    // Chamar Edge Function do Supabase para enviar email via Resend
+    const { data: functionData, error: functionError } = await supabase.functions.invoke('send-email', {
+      body: {
+        to: emailData.to,
+        from: emailData.from,
+        subject: emailData.subject,
+        html: emailData.html,
+        text: emailData.text,
+      },
     });
-    */
 
-    // Por enquanto, vamos simular um envio bem-sucedido
-    // Em produção, remova esta simulação e use o MCP real
-    console.log('📧 Email a ser enviado:', {
+    if (functionError) {
+      console.error('❌ Erro na Edge Function:', functionError);
+      throw new Error(functionError.message || 'Erro ao chamar função de envio de email');
+    }
+
+    if (!functionData?.success) {
+      const errorMsg = functionData?.error || 'Erro desconhecido ao enviar email';
+      console.error('❌ Erro ao enviar email:', errorMsg, functionData);
+      
+      // Mensagem mais amigável se for problema de configuração
+      if (errorMsg.includes('RESEND_API_KEY')) {
+        throw new Error('RESEND_API_KEY não configurada no Supabase. Configure em Settings → Edge Functions → Secrets');
+      }
+      
+      throw new Error(errorMsg);
+    }
+
+    console.log('📧 Email enviado com sucesso:', {
       to: emailData.to,
       subject: emailData.subject,
       from: emailData.from,
+      id: functionData.id,
     });
 
     // Log de sucesso
