@@ -140,7 +140,9 @@ kanban/
 │       └── index.ts               # Tipos TypeScript
 ├── PRIMEIROS_PASSOS.md         # Tutorial de 15 minutos
 ├── GUIA_COMPLETO_IMPLEMENTACAO.md  # Documentação completa
-└── MCP_RESEND_CONFIG.md        # Config do Resend
+├── MCP_RESEND_CONFIG.md        # Config do Resend
+├── 🔥 GUIA_DNS_RESEND_VERCEL.md   # 📧 Passo a Passo DNS Completo
+└── ⚡ QUICK_DNS_SETUP.md          # 🚀 Guia Rápido DNS (3 min)
 ```
 
 ## 🔐 Permissões
@@ -192,6 +194,8 @@ kanban/
 
 - 📖 **PRIMEIROS_PASSOS.md** - Tutorial de 15 minutos
 - 📖 **GUIA_COMPLETO_IMPLEMENTACAO.md** - Documentação técnica completa
+- 📧 **GUIA_DNS_RESEND_VERCEL.md** - 🔥 Passo a passo DNS Completo (Resend + Vercel)
+- ⚡ **QUICK_DNS_SETUP.md** - Guia Rápido DNS (3 minutos)
 - 📖 **MCP_RESEND_CONFIG.md** - Configuração do Resend
 - 📖 **supabase/README.md** - Instruções do banco de dados
 
