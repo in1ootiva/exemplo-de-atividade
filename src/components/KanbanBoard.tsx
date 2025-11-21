@@ -14,13 +14,14 @@ import { StudentCard } from './StudentCard';
 import { ObservacaoModal } from './ObservacaoModal';
 import { DroppableColumn } from './DroppableColumn';
 import { AlunoCardWithDetails, ColumnId, ACADEMIC_COLUMNS } from '@/types';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Trash2 } from 'lucide-react';
 import { useAlunoCards } from '@/hooks/useAlunoCards';
 import { useAuth } from '@/hooks/useAuth';
+import { Button } from './ui/button';
 
 export function KanbanBoard() {
   useAuth();
-  const { cards, loading, moverCard } = useAlunoCards();
+  const { cards, loading, moverCard, limparCardsOrfaos } = useAlunoCards();
   const [activeCard, setActiveCard] = useState<AlunoCardWithDetails | null>(null);
   const [observacaoModalOpen, setObservacaoModalOpen] = useState(false);
   const [cardToMove, setCardToMove] = useState<{
@@ -28,6 +29,7 @@ export function KanbanBoard() {
     novaColuna: ColumnId;
     alunoNome: string;
   } | null>(null);
+  const [limpando, setLimpando] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -104,6 +106,27 @@ export function KanbanBoard() {
     return cards.filter((card) => card.column_id === columnId);
   };
 
+  const handleLimparOrfaos = async () => {
+    if (!confirm('Deseja remover todos os cards de alunos inativos ou excluídos?')) {
+      return;
+    }
+
+    setLimpando(true);
+    try {
+      const resultado = await limparCardsOrfaos();
+      if (resultado.removidos > 0) {
+        alert(`✅ ${resultado.removidos} card(s) órfão(s) removido(s) com sucesso!`);
+      } else {
+        alert('✅ Nenhum card órfão encontrado. Tudo limpo!');
+      }
+    } catch (error) {
+      console.error('Erro ao limpar cards órfãos:', error);
+      alert('❌ Erro ao limpar cards órfãos');
+    } finally {
+      setLimpando(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -117,6 +140,28 @@ export function KanbanBoard() {
 
   return (
     <>
+      <div className="mb-4 flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleLimparOrfaos}
+          disabled={limpando}
+          title="Remover cards de alunos inativos ou excluídos"
+        >
+          {limpando ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Limpando...
+            </>
+          ) : (
+            <>
+              <Trash2 className="h-4 w-4 mr-2" />
+              Limpar Cards Órfãos
+            </>
+          )}
+        </Button>
+      </div>
+
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}

@@ -100,7 +100,22 @@ export function useAlunos(turmaId?: string) {
     if (!user) return;
 
     try {
-      // Soft delete - marcar como inativo
+      console.log(`🗑️ Inativando aluno: ${id}`);
+      
+      // Primeiro, remover o card do aluno (se existir)
+      const { error: cardDeleteError } = await supabase
+        .from('aluno_cards')
+        .delete()
+        .eq('aluno_id', id);
+
+      if (cardDeleteError) {
+        console.error('Erro ao deletar card do aluno:', cardDeleteError);
+        // Não lançar erro aqui, pois o aluno pode não ter card
+      } else {
+        console.log('✅ Card do aluno removido com sucesso');
+      }
+
+      // Depois, marcar aluno como inativo (soft delete)
       const { error: deleteError } = await supabase
         .from('alunos')
         .update({ status: 'inativo' })
@@ -108,10 +123,11 @@ export function useAlunos(turmaId?: string) {
 
       if (deleteError) throw deleteError;
       
+      console.log('✅ Aluno marcado como inativo');
       await fetchAlunos(); // Recarregar lista
     } catch (err: any) {
       setError(err.message);
-      console.error('Error deleting aluno:', err);
+      console.error('❌ Error deleting aluno:', err);
       throw err;
     }
   };
