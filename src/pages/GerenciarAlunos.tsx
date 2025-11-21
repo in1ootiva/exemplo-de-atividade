@@ -28,6 +28,7 @@ export function GerenciarAlunos() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAluno, setEditingAluno] = useState<Aluno | null>(null);
   const [turmaFiltro, setTurmaFiltro] = useState<string>('todas');
+  const [mostrarInativos, setMostrarInativos] = useState(false);
   const [formData, setFormData] = useState({
     nome: '',
     email: '',
@@ -93,10 +94,9 @@ export function GerenciarAlunos() {
     }
   };
 
-  const alunosFiltrados =
-    turmaFiltro === 'todas'
-      ? alunos
-      : alunos.filter((a) => a.turma_id === turmaFiltro);
+  const alunosFiltrados = alunos
+    .filter((a) => mostrarInativos || a.status === 'ativo') // Mostrar apenas ativos por padrão
+    .filter((a) => turmaFiltro === 'todas' || a.turma_id === turmaFiltro);
 
   if (loading) {
     return (
@@ -124,32 +124,48 @@ export function GerenciarAlunos() {
         </Button>
       </div>
 
-      {/* Filtro de Turmas */}
-      <div className="flex items-center gap-2">
-        <Filter className="h-4 w-4 text-gray-500" />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              {turmaFiltro === 'todas'
-                ? 'Todas as Turmas'
-                : turmas.find((t) => t.id === turmaFiltro)?.nome}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => setTurmaFiltro('todas')}>
-              Todas as Turmas
-            </DropdownMenuItem>
-            {turmas.map((turma) => (
-              <DropdownMenuItem
-                key={turma.id}
-                onClick={() => setTurmaFiltro(turma.id)}
-              >
-                {turma.nome}
+      {/* Filtros */}
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-gray-500" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                {turmaFiltro === 'todas'
+                  ? 'Todas as Turmas'
+                  : turmas.find((t) => t.id === turmaFiltro)?.nome}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => setTurmaFiltro('todas')}>
+                Todas as Turmas
               </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <span className="text-sm text-gray-600">
+              {turmas.map((turma) => (
+                <DropdownMenuItem
+                  key={turma.id}
+                  onClick={() => setTurmaFiltro(turma.id)}
+                >
+                  {turma.nome}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        <div className="flex items-center gap-2 border-l pl-4">
+          <input
+            type="checkbox"
+            id="mostrarInativos"
+            checked={mostrarInativos}
+            onChange={(e) => setMostrarInativos(e.target.checked)}
+            className="rounded border-gray-300"
+          />
+          <label htmlFor="mostrarInativos" className="text-sm text-gray-600 cursor-pointer">
+            Mostrar inativos
+          </label>
+        </div>
+
+        <span className="text-sm text-gray-600 border-l pl-4">
           {alunosFiltrados.length} aluno(s)
         </span>
       </div>
