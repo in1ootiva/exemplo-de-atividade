@@ -31,7 +31,7 @@ export function RelatorioModal({
   onEnviar,
 }: RelatorioModalProps) {
   const [destinatarios, setDestinatarios] = useState('');
-  const [from, setFrom] = useState('');
+  const [from, setFrom] = useState('CRM@in100tiva.com');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -168,12 +168,12 @@ export function RelatorioModal({
                 <Input
                   id="from"
                   type="email"
-                  placeholder="seu-email@dominio.com"
+                  placeholder="CRM@in100tiva.com"
                   value={from}
                   onChange={(e) => setFrom(e.target.value)}
                 />
                 <p className="text-xs text-gray-500">
-                  Use um email de domínio verificado no Resend
+                  Email padrão: CRM@in100tiva.com (domínio verificado no Resend)
                 </p>
               </div>
 

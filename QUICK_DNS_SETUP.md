@@ -100,10 +100,10 @@ Se aparecer algo diferente de `vercel-dns.com`, você precisa adicionar os regis
 
 ## ✅ Teste Final
 
-Após verificação, teste no código:
+Após verificação, o email já está configurado no código:
 
 ```typescript
-from: "noreply@seudominio.com"  // Use seu domínio verificado ✅
+from: "CRM@in100tiva.com"  // Email padrão configurado ✅
 ```
 
 ---

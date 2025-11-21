@@ -447,10 +447,10 @@ nslookup -type=TXT _dmarc.godevs.com.br
 
 Após o domínio ser **verificado** (✅), você pode testar o envio:
 
-1. No código, atualize o email do remetente:
+1. No código, o email do remetente já está configurado:
 
 ```typescript
-from: "noreply@godevs.com.br"  // Use seu domínio verificado
+from: "CRM@in100tiva.com"  // Email padrão configurado ✅
 ```
 
 2. Tente enviar um email pelo sistema

@@ -243,7 +243,7 @@ Para ver o sistema funcionando completamente:
 3. No sistema, clique em **Enviar Relatório**
 4. Configure:
    ```
-   De: seu-email@dominio-verificado.com
+   De: CRM@in100tiva.com (já preenchido automaticamente)
    Para: seu-email@teste.com
    ```
 5. Clique em **Enviar Relatório**
