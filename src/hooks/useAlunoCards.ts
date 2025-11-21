@@ -216,48 +216,56 @@ export function useAlunoCards(turmaId?: string) {
   };
 
   const limparCardsOrfaos = async () => {
-    if (!user) return { removidos: 0 };
+    if (!user) return { removidos: 0, detalhes: [] };
 
     try {
       console.log('🧹 Limpando cards órfãos...');
       
-      // Buscar todos os cards
+      // Buscar todos os cards com informações do aluno
       const { data: todosCards, error: cardsError } = await supabase
         .from('aluno_cards')
-        .select('id, aluno_id');
+        .select(`
+          id, 
+          aluno_id,
+          aluno:aluno_id(nome, status)
+        `);
 
       if (cardsError) throw cardsError;
 
       if (!todosCards || todosCards.length === 0) {
         console.log('✅ Nenhum card encontrado');
         await fetchCards(); // Buscar cards normalmente
-        return { removidos: 0 };
+        return { removidos: 0, detalhes: [] };
       }
 
-      // Buscar todos os alunos ativos
-      const { data: alunosAtivos, error: alunosError } = await supabase
-        .from('alunos')
-        .select('id')
-        .eq('status', 'ativo');
-
-      if (alunosError) throw alunosError;
-
-      const alunosAtivoIds = (alunosAtivos || []).map(a => a.id);
-
-      // Identificar cards órfãos (de alunos inativos ou inexistentes)
-      const cardsOrfaos = todosCards.filter(card => !alunosAtivoIds.includes(card.aluno_id));
+      // Identificar cards órfãos (alunos inativos ou inexistentes)
+      const cardsOrfaos = todosCards.filter((card: any) => {
+        const alunoInativo = card.aluno && card.aluno.status === 'inativo';
+        const alunoNaoExiste = !card.aluno;
+        return alunoInativo || alunoNaoExiste;
+      });
 
       if (cardsOrfaos.length === 0) {
         console.log('✅ Nenhum card órfão encontrado');
-        // Buscar cards normalmente se não há órfãos
         await fetchCards();
-        return { removidos: 0 };
+        return { removidos: 0, detalhes: [] };
       }
 
-      console.log(`🗑️ Encontrados ${cardsOrfaos.length} cards órfãos. Removendo...`);
+      // Log detalhado dos cards que serão removidos
+      const detalhes = cardsOrfaos.map((card: any) => ({
+        card_id: card.id,
+        aluno_id: card.aluno_id,
+        aluno_nome: card.aluno?.nome || 'Aluno não encontrado',
+        status: card.aluno?.status || 'inexistente',
+      }));
+
+      console.log(`🗑️ Encontrados ${cardsOrfaos.length} cards órfãos:`);
+      detalhes.forEach(d => {
+        console.log(`  - ${d.aluno_nome} (${d.status})`);
+      });
 
       // Remover cards órfãos
-      const cardsOrfaosIds = cardsOrfaos.map(c => c.id);
+      const cardsOrfaosIds = cardsOrfaos.map((c: any) => c.id);
       const { error: deleteError } = await supabase
         .from('aluno_cards')
         .delete()
@@ -268,11 +276,11 @@ export function useAlunoCards(turmaId?: string) {
       console.log(`✅ ${cardsOrfaos.length} cards órfãos removidos com sucesso`);
       
       await fetchCards(); // Recarregar lista
-      return { removidos: cardsOrfaos.length };
+      return { removidos: cardsOrfaos.length, detalhes };
     } catch (err: any) {
       console.error('❌ Erro ao limpar cards órfãos:', err);
       await fetchCards(); // Buscar cards mesmo com erro
-      return { removidos: 0 };
+      return { removidos: 0, detalhes: [] };
     }
   };
 

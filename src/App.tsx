@@ -23,6 +23,9 @@ import { useState } from 'react';
 import { enviarRelatorioConsolidado } from './services/reportService';
 import { enviarEmailComQuota } from './services/emailService';
 
+// Importar funções de debug (disponíveis no console como window.debugCards)
+import './utils/debugCards';
+
 function AppContent() {
   const { signOut, user } = useAuth();
   const { profile, isCoordenador } = useProfile();

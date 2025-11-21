@@ -115,7 +115,9 @@ export function KanbanBoard() {
     try {
       const resultado = await limparCardsOrfaos();
       if (resultado.removidos > 0) {
-        alert(`✅ ${resultado.removidos} card(s) órfão(s) removido(s) com sucesso!`);
+        const nomes = resultado.detalhes?.map((d: any) => d.aluno_nome).join('\n• ') || '';
+        const mensagem = `✅ ${resultado.removidos} card(s) órfão(s) removido(s):\n\n• ${nomes}`;
+        alert(mensagem);
       } else {
         alert('✅ Nenhum card órfão encontrado. Tudo limpo!');
       }
