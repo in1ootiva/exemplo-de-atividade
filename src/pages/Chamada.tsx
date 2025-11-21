@@ -8,13 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, ClipboardList, Save, CheckCircle2, AlertCircle } from 'lucide-react';
-import { ChamadaListItem } from '@/types';
+import { Loader2, ClipboardList, Save, CheckCircle2, AlertCircle, History, Calendar, Users, Eye } from 'lucide-react';
+import { ChamadaListItem, ChamadaCompleta } from '@/types';
 
 export function Chamada() {
   const { turmas, loading: turmasLoading } = useTurmas();
   const { getAlunosAtivosByTurma } = useAlunos();
-  const { gerarChamada, salvarChamada } = useChamadas();
+  const { chamadas, gerarChamada, salvarChamada, getChamadaById } = useChamadas();
   const { recalcularMultiplosCards } = useAlunoCards();
   
   const [turmaId, setTurmaId] = useState('');
@@ -26,6 +26,9 @@ export function Chamada() {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [mostrarHistorico, setMostrarHistorico] = useState(true);
+  const [chamadaSelecionada, setChamadaSelecionada] = useState<ChamadaCompleta | null>(null);
+  const [visualizando, setVisualizando] = useState(false);
 
   useEffect(() => {
     if (turmas.length > 0 && !turmaId) {
@@ -100,6 +103,7 @@ export function Chamada() {
           setPresencas([]);
           setChamadaId('');
           setSuccess(false);
+          setMostrarHistorico(true);
         }, 2000);
       }
     } catch (err: any) {
@@ -107,6 +111,28 @@ export function Chamada() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleVisualizarChamada = async (chamada: ChamadaCompleta) => {
+    setVisualizando(true);
+    const chamadaCompleta = await getChamadaById(chamada.id);
+    if (chamadaCompleta) {
+      setChamadaSelecionada(chamadaCompleta);
+    }
+    setVisualizando(false);
+  };
+
+  const handleFecharVisualizacao = () => {
+    setChamadaSelecionada(null);
+  };
+
+  const handleNovaChamada = () => {
+    setMostrarHistorico(false);
+    setChamadaGerada(false);
+    setPresencas([]);
+    setChamadaId('');
+    setError('');
+    setChamadaSelecionada(null);
   };
 
   const totalPresentes = presencas.filter(p => p.presente).length;
@@ -146,16 +172,223 @@ export function Chamada() {
     );
   }
 
+  // Filtrar chamadas pela turma selecionada
+  const chamadasFiltradas = turmaId 
+    ? chamadas.filter(c => c.turma_id === turmaId)
+    : chamadas;
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Chamada</h1>
-        <p className="text-muted-foreground">
-          Registre a presença dos alunos e monitore a frequência
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Chamada</h1>
+          <p className="text-muted-foreground">
+            Registre a presença dos alunos e monitore a frequência
+          </p>
+        </div>
+        {mostrarHistorico && !chamadaSelecionada && (
+          <Button onClick={handleNovaChamada}>
+            <ClipboardList className="h-4 w-4 mr-2" />
+            Nova Chamada
+          </Button>
+        )}
       </div>
 
-      {!chamadaGerada ? (
+      {/* Visualização de chamada específica */}
+      {chamadaSelecionada && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>Detalhes da Chamada</span>
+              <Button variant="outline" onClick={handleFecharVisualizacao}>
+                Voltar ao Histórico
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-3">
+                <div>
+                  <Label>Turma</Label>
+                  <p className="font-medium">{chamadaSelecionada.turma_nome}</p>
+                </div>
+                <div>
+                  <Label>Data</Label>
+                  <p className="font-medium">
+                    {new Date(chamadaSelecionada.data).toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+                <div>
+                  <Label>Professor</Label>
+                  <p className="font-medium">{chamadaSelecionada.professor_nome}</p>
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <h3 className="font-semibold mb-3">Lista de Presença</h3>
+                <div className="space-y-2">
+                  {chamadaSelecionada.presencas.map((presenca: any) => (
+                    <div
+                      key={presenca.id}
+                      className={`flex items-center justify-between p-3 rounded-lg border ${
+                        presenca.presente
+                          ? 'bg-green-50 border-green-200'
+                          : 'bg-red-50 border-red-200'
+                      }`}
+                    >
+                      <span className="font-medium">{presenca.aluno?.nome || 'Aluno'}</span>
+                      <span className={`text-sm font-semibold ${
+                        presenca.presente ? 'text-green-700' : 'text-red-700'
+                      }`}>
+                        {presenca.presente ? 'PRESENTE' : 'AUSENTE'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Estatísticas da chamada */}
+              <div className="grid gap-4 md:grid-cols-3 border-t pt-4">
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-green-600">
+                        {chamadaSelecionada.presencas.filter((p: any) => p.presente).length}
+                      </p>
+                      <p className="text-sm text-gray-600">Presentes</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-red-600">
+                        {chamadaSelecionada.presencas.filter((p: any) => !p.presente).length}
+                      </p>
+                      <p className="text-sm text-gray-600">Ausentes</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-blue-600">
+                        {Math.round(
+                          (chamadaSelecionada.presencas.filter((p: any) => p.presente).length /
+                            chamadaSelecionada.presencas.length) *
+                            100
+                        )}%
+                      </p>
+                      <p className="text-sm text-gray-600">Frequência</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Histórico de Chamadas */}
+      {mostrarHistorico && !chamadaSelecionada && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <History className="h-5 w-5" />
+              Histórico de Chamadas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* Filtro por turma */}
+              <div className="space-y-2">
+                <Label htmlFor="filtroTurma">Filtrar por Turma</Label>
+                <select
+                  id="filtroTurma"
+                  value={turmaId}
+                  onChange={(e) => setTurmaId(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md"
+                >
+                  <option value="">Todas as Turmas</option>
+                  {turmas.map((turma) => (
+                    <option key={turma.id} value={turma.id}>
+                      {turma.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Lista de chamadas */}
+              {chamadasFiltradas.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <History className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>Nenhuma chamada registrada ainda</p>
+                  <Button onClick={handleNovaChamada} className="mt-4">
+                    Criar Primeira Chamada
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {chamadasFiltradas.map((chamada) => {
+                    const totalPresentes = chamada.presencas.filter((p: any) => p.presente).length;
+                    const totalAlunos = chamada.presencas.length;
+                    const percentual = totalAlunos > 0 
+                      ? Math.round((totalPresentes / totalAlunos) * 100) 
+                      : 0;
+
+                    return (
+                      <div
+                        key={chamada.id}
+                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <Calendar className="h-4 w-4 text-gray-500" />
+                            <span className="font-medium">
+                              {new Date(chamada.data).toLocaleDateString('pt-BR', {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                              })}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-gray-600">
+                            <span className="flex items-center gap-1">
+                              <Users className="h-4 w-4" />
+                              {chamada.turma_nome}
+                            </span>
+                            <span className="text-green-600 font-medium">
+                              {totalPresentes} presentes
+                            </span>
+                            <span className="text-red-600 font-medium">
+                              {totalAlunos - totalPresentes} ausentes
+                            </span>
+                            <span className="text-blue-600 font-medium">
+                              {percentual}% frequência
+                            </span>
+                          </div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleVisualizarChamada(chamada)}
+                          disabled={visualizando}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          Ver Detalhes
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {!chamadaGerada && !mostrarHistorico ? (
         <Card>
           <CardHeader>
             <CardTitle>Gerar Chamada</CardTitle>
@@ -320,6 +553,7 @@ export function Chamada() {
                     setPresencas([]);
                     setChamadaId('');
                     setError('');
+                    setMostrarHistorico(true);
                   }}
                   disabled={saving}
                   className="flex-1"

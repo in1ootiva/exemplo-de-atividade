@@ -11,25 +11,46 @@ export async function buscarHistoricoFaltas(
   try {
     const dataLimite = new Date();
     dataLimite.setDate(dataLimite.getDate() - diasLimite);
+    const dataLimiteStr = dataLimite.toISOString().split('T')[0];
 
-    const { data, error } = await supabase
+    // Primeira query: buscar as chamadas no período
+    const { data: chamadasPeriodo, error: chamadasError } = await supabase
+      .from('chamadas')
+      .select('id, data')
+      .gte('data', dataLimiteStr);
+
+    if (chamadasError) throw chamadasError;
+
+    if (!chamadasPeriodo || chamadasPeriodo.length === 0) {
+      return [];
+    }
+
+    const chamadasIds = chamadasPeriodo.map(c => c.id);
+
+    // Segunda query: buscar os registros de presença do aluno para essas chamadas
+    const { data: presencas, error: presencasError } = await supabase
       .from('chamadas_alunos')
-      .select(`
-        presente,
-        chamada:chamada_id(data)
-      `)
+      .select('presente, chamada_id')
       .eq('aluno_id', alunoId)
-      .gte('chamada.data', dataLimite.toISOString().split('T')[0])
-      .order('chamada.data', { ascending: false });
+      .in('chamada_id', chamadasIds);
 
-    if (error) throw error;
+    if (presencasError) throw presencasError;
 
-    return (data || [])
-      .map((item: any) => ({
-        data: item.chamada.data,
-        presente: item.presente,
-      }))
-      .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+    if (!presencas || presencas.length === 0) {
+      return [];
+    }
+
+    // Combinar os dados
+    const historico = presencas.map((presenca: any) => {
+      const chamada = chamadasPeriodo.find(c => c.id === presenca.chamada_id);
+      return {
+        data: chamada?.data || '',
+        presente: presenca.presente,
+      };
+    });
+
+    // Ordenar por data (mais recente primeiro)
+    return historico.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
   } catch (error) {
     console.error('Erro ao buscar histórico de faltas:', error);
     return [];
@@ -102,38 +123,60 @@ export function calcularEstatisticasFaltas(historico: FaltaHistorico[]): Calculo
  */
 export async function recalcularCardAluno(alunoId: string, turmaId: string): Promise<boolean> {
   try {
+    console.log(`🔄 Recalculando card do aluno: ${alunoId}`);
+    
     // Buscar histórico de faltas
     const historico = await buscarHistoricoFaltas(alunoId);
+    console.log(`📊 Histórico de faltas encontrado: ${historico.length} registros`);
 
     // Calcular estatísticas
     const calculo = calcularEstatisticasFaltas(historico);
+    console.log(`📈 Cálculo:`, {
+      total_faltas: calculo.total_faltas,
+      faltas_consecutivas: calculo.faltas_consecutivas,
+      column_id: calculo.column_id,
+    });
 
     // Verificar se o aluno já tem um card
-    const { data: cardExistente } = await supabase
+    const { data: cardExistente, error: cardError } = await supabase
       .from('aluno_cards')
       .select('*')
       .eq('aluno_id', alunoId)
-      .single();
+      .maybeSingle();
+
+    if (cardError) {
+      console.error('❌ Erro ao buscar card existente:', cardError);
+      throw cardError;
+    }
+
+    console.log(`🎴 Card existente:`, cardExistente ? 'Sim' : 'Não');
 
     // Se não há faltas e não há card, não fazer nada
     if (!calculo.column_id && !cardExistente) {
+      console.log(`✅ Aluno sem faltas e sem card - nada a fazer`);
       return true;
     }
 
     // Se não há faltas mas há card, deletar o card (aluno está indo bem)
     if (!calculo.column_id && cardExistente) {
-      await supabase
+      console.log(`🗑️ Deletando card - aluno sem faltas`);
+      const { error: deleteError } = await supabase
         .from('aluno_cards')
         .delete()
         .eq('aluno_id', alunoId);
+      
+      if (deleteError) {
+        console.error('❌ Erro ao deletar card:', deleteError);
+        throw deleteError;
+      }
       return true;
     }
 
     // Se o aluno já estava em "Contato Realizado", manter lá
     // (só sai manualmente ou se voltar a ter 0 faltas)
     if (cardExistente && cardExistente.column_id === 'contato_realizado') {
-      // Apenas atualizar as estatísticas, mas manter na mesma coluna
-      await supabase
+      console.log(`📞 Card em "Contato Realizado" - apenas atualizando estatísticas`);
+      const { error: updateError } = await supabase
         .from('aluno_cards')
         .update({
           total_faltas: calculo.total_faltas,
@@ -141,6 +184,11 @@ export async function recalcularCardAluno(alunoId: string, turmaId: string): Pro
           ultima_falta: calculo.ultima_falta,
         })
         .eq('aluno_id', alunoId);
+      
+      if (updateError) {
+        console.error('❌ Erro ao atualizar card:', updateError);
+        throw updateError;
+      }
       return true;
     }
 
@@ -156,20 +204,33 @@ export async function recalcularCardAluno(alunoId: string, turmaId: string): Pro
 
     if (cardExistente) {
       // Atualizar card existente
-      await supabase
+      console.log(`🔄 Atualizando card existente para coluna: ${calculo.column_id}`);
+      const { error: updateError } = await supabase
         .from('aluno_cards')
         .update(cardData)
         .eq('aluno_id', alunoId);
+      
+      if (updateError) {
+        console.error('❌ Erro ao atualizar card:', updateError);
+        throw updateError;
+      }
     } else {
       // Criar novo card
-      await supabase
+      console.log(`✨ Criando novo card na coluna: ${calculo.column_id}`);
+      const { error: insertError } = await supabase
         .from('aluno_cards')
         .insert([cardData]);
+      
+      if (insertError) {
+        console.error('❌ Erro ao criar card:', insertError);
+        throw insertError;
+      }
     }
 
+    console.log(`✅ Card recalculado com sucesso!`);
     return true;
   } catch (error) {
-    console.error('Erro ao recalcular card do aluno:', error);
+    console.error('❌ Erro ao recalcular card do aluno:', error);
     return false;
   }
 }
